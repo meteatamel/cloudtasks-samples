@@ -19,10 +19,10 @@ Deploy a Cloud Run service which will serve as the target of the HTTP tasks
 later:
 
 ```sh
-SERVICE=hello-a
+SERVICE_A=hello-a
 REGION=us-central1
 
-gcloud run deploy $SERVICE \
+gcloud run deploy $SERVICE_A \
   --allow-unauthenticated \
   --image=gcr.io/cloudrun/hello \
   --region=$REGION
@@ -31,7 +31,7 @@ gcloud run deploy $SERVICE \
 Save the URL of the service for later:
 
 ```sh
-SERVICE_URL=$(gcloud run services describe $SERVICE --region $REGION --format 'value(status.url)')
+SERVICE_A_URL=$(gcloud run services describe $SERVICE_A --region $REGION --format 'value(status.url)')
 ```
 
 ## Create a Cloud Tasks queue
@@ -61,10 +61,8 @@ Create an HTTP task:
 gcloud tasks create-http-task \
     --queue=$QUEUE \
     --location=$LOCATION \
-    --url=$SERVICE_URL \
+    --url=$SERVICE_A_URL \
     --method=GET
-
-Created task [projects/atamel-tasks/locations/us-central1/queues/http-queue/tasks/1795553800989510802]
 ```
 
 At this point, the task is created but it's in pending state as the queue is
@@ -91,7 +89,7 @@ You should see that the Cloud Run service received an HTTP GET request from
 Cloud Tasks:
 
 ```sh
-gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=$SERVICE" --limit 1
+gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=$SERVICE_A" --limit 1
 ---
 httpRequest:
   latency: 0.227597158s
