@@ -6,7 +6,7 @@ This repository contains a collection of samples for Cloud Tasks.
 
 ## Samples
 
-TODO
+* [Create a regular queue and add HTTP target tasks](/queue-http-tasks/)
 
 -------
 
