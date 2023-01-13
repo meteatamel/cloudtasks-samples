@@ -91,6 +91,29 @@ curl -X POST "$TASKS_QUEUES_API/$QUEUE/tasks:buffer" \
   -d "{'message': 'Hello World'}"
 ```
 
+You can also create an HTTP task with client libraries. For example, you can
+check out the [Program.cs](./client-libraries/csharp/Program.cs) for a C# sample
+where an HTTP GET request is sent directly to the BufferTask API without having
+to wrap it into a `Task` or needing the client-library for Cloud Tasks:
+
+```csharp
+var BufferTaskApiUrl = $"https://cloudtasks.googleapis.com/v2beta3/projects/{ProjectId}/locations/{Location}/queues/{Queue}/tasks:buffer";
+
+using (var client = new HttpClient())
+{
+    client.DefaultRequestHeaders.Add("Authorization", $"Bearer {AccessToken}");
+    var response = await client.GetAsync(BufferTaskApiUrl);
+    var content = await response.Content.ReadAsStringAsync();
+    Console.WriteLine($"Response: {content}");
+}
+```
+
+You can run it as follows:
+
+```sh
+dotnet run $PROJECT_ID $LOCATION $QUEUE $ACCESS_TOKEN
+```
+
 BufferTask API takes care of creating a Task out of the HTTP requests and adds
 the URL from the queue uri override.
 
