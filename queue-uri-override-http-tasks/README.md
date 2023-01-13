@@ -36,7 +36,7 @@ SERVICE2_URL=$(gcloud run services describe $SERVICE2 --region $REGION --format 
 SERVICE2_HOST=$(echo $SERVICE2_URL | sed 's,http[s]*://,,g')
 ```
 
-## Setup for Queue-level Task Routing Configuration
+## Setup
 
 *Queue-level Task Routing Configuration* is currently an experimental feature.
 As such, it doesn't have `gcloud` support. Instead, we will use `curl`.

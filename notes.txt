@@ -1,28 +1,14 @@
 TODO:
 -Add simple arch diagrams for each sample
-
-Add HTTP target tasks with the new Buffer API
+-Add a bug to update all to gcloud commands
 
 Normal queue:
 -Show how to do with client library?
 
+Override queue:
+-Explain at the beginning what the feature does
+-Explain what other things can be overridden
+
 Buffer API
--Create an HTTP task with Buffer API: Show that URL is optional and no client library is needed
+--Show how no client library is needed
 
-===
-
-# Update queue HTTP target uri override
-curl -X PATCH "$TASKS_QUEUES_API/$QUEUE?updateMask=httpTarget.uriOverride" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d @- << EOF
-{"httpTarget": {"uriOverride":{"host":"hello-idcwffc3yq-uc.a.run.app"}}}
-EOF
-
-# Send requests with Buffer API
-curl -X GET "$TASKS_QUEUES_API/$QUEUE/tasks:buffer" \
-  -H "Authorization: Bearer $ACCESS_TOKEN"
-
-curl -X POST "$TASKS_QUEUES_API/$QUEUE/tasks:buffer" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -d "some_payload"
