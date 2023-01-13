@@ -55,7 +55,7 @@ gcloud tasks queues pause $QUEUE \
 
 ## Create an HTTP task
 
-Create an HTTP task:
+Create an HTTP task with `gcloud`:
 
 ```sh
 gcloud tasks create-http-task \
@@ -64,6 +64,37 @@ gcloud tasks create-http-task \
     --url=$SERVICE1_URL \
     --method=GET
 ```
+
+You can also create an HTTP task with client libraries. For example, you can
+check out the [Program.cs](./client-libraries/csharp/Program.cs) for a C# sample
+where an HTTP request is wrapped into a `Task` and then a `TaskRequest` before being
+sent to Cloud Tasks with the `CloudTasksClient`:
+
+```csharp
+var taskRequest = new CreateTaskRequest
+{
+    Parent = new QueueName(projectId, location, queue).ToString(),
+    Task = new Task
+    {
+        HttpRequest = new HttpRequest
+        {
+            HttpMethod = HttpMethod.Get,
+            Url = url
+        }
+    }
+};
+
+var client = CloudTasksClient.Create();
+var response = client.CreateTask(taskRequest);
+```
+
+You can run it as follows:
+
+```sh
+dotnet run $PROJECT_ID $LOCATION $QUEUE $SERVICE1_URL
+```
+
+## Test the HTTP task
 
 At this point, the task is created but it's in pending state as the queue is
 paused:
@@ -75,8 +106,6 @@ gcloud tasks queues list \
 QUEUE_NAME  STATE   MAX_NUM_OF_TASKS  MAX_RATE (/sec)  MAX_ATTEMPTS
 http-queue  PAUSED  1000              500.0            100
 ```
-
-## Test the HTTP task
 
 Resume the queue:
 
