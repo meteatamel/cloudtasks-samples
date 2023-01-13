@@ -1,6 +1,6 @@
 # Create a queue with HTTP uri override
 
-> **Note:** *Queue-level Task Routing Configuration* is an experimental feature
+> **Note:** *Queue-level task routing configuration* is an experimental feature
 > in *preview*. Only allow-listed projects can currently take advantage of it.
 
 This sample builds on the previous [Create a regular queue for HTTP target
@@ -13,6 +13,26 @@ In this sample, you'll see how to:
    Routing Configuration* feature and add HTTP tasks to it to target a secondary
    Cloud Run service.
 1. Change pending tasks in the queue to target a new uri using the uri override.
+
+## What is Queue-level task routing configuration?
+
+Queue-level task routing configuration changes the HTTP task routing for the
+entire queue for all pending and new tasks. This allows easier creation of Tasks
+as the HTTP target need not be set at the Task level and it shifts more control
+to the service provider as they are able to set the target of all Tasks in a
+queue (eg. route traffic to a different backend if the original backend is
+down).
+
+The following configuration can be set at the queue-level:
+
+* **Headers**: Queue-level headers when specified at the queue-level, will upsert
+  headers for all Tasks in the queue.
+* **HTTP Method**: HTTP method when specified at the queue-level, will override the
+  HTTP method for all Tasks in the queue.
+* **Target URI**: host, path, query, port, scheme (HTTP or HTTPS) can be
+  individually overridden.
+* **Authorization**: OIDC/OAuth config when specified at the queue-level will
+  override the Task-level OIDC/OAuth config.
 
 ## Deploy a second Cloud Run service
 

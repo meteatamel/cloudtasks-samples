@@ -1,6 +1,6 @@
 # Create HTTP target tasks more easily with the BufferTask API
 
-> **Note:** *Queue-level Task Routing Configuration* and *BufferTaskAPI* are
+> **Note:** *Queue-level task routing configuration* and *BufferTaskAPI* are
 > experimental features in *preview*. Only allow-listed projects can currently
 > take advantage of it.
 
@@ -10,10 +10,24 @@ some default HTTP uri overrides. In this sample, you'll see how to take
 advantage of the queue-level HTTP uri overrides and the BufferTask API to create
 HTTP target tasks more easily.
 
+## What is BufferTask API?
+
 The CreateTask API is the old way of creating Tasks and requires the client to
-send in a Task object to the API with all the required fields set. The
-BufferTask API is the new method which takes a an arbitrary HTTP request and
-converts it into a Task object without needing Cloud Tasks client library.
+send in a Task object to the API with all the required fields set.
+
+BufferTask is a new API that allows the users to create an HTTP Task without the
+need to provide any Task Configuration (HTTP URL, headers, authorization),
+allowing you to simply send a message or the body of your request to the Buffer
+API.
+
+This enables easier integration with services as Cloud Tasks can now be deployed
+in front of your service without needing any code changes on the client side.
+Any arbitrary HTTP request sent to the BufferTask API will be wrapped as a Task
+object and delivered to the destination set at the queue-level.
+
+To use the BufferTask API, the queue needs to have the Target URI configuration
+set, or in other words, the previous feature: Queue-level routing configuration
+is a prerequisite for using the BufferTask API.
 
 ## Setup
 
