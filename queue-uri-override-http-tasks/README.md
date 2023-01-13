@@ -1,26 +1,29 @@
-# Create a queue with uri override and add HTTP target tasks
+# Create a queue with HTTP uri override
 
 > **Note:** *Queue-level Task Routing Configuration* is an experimental feature
 > in *preview*. Only allow-listed projects can currently take advantage of it.
 
-This sample builds on the previous [Create a regular queue and add HTTP target
+This sample builds on the previous [Create a regular queue for HTTP target
 tasks](../queue-http-tasks/) sample. Make sure you go through that sample before
 continuing with this one.
 
-In this sample, you'll see how to create a Cloud Tasks queue with a uri override
-and add HTTP tasks to it to target a secondary Cloud Run service.
+In this sample, you'll see how to:
+
+1. Create a Cloud Tasks queue with a uri override using the *Queue-level Task
+   Routing Configuration* feature and add HTTP tasks to it to target a secondary
+   Cloud Run service.
+1. Change pending tasks in the queue to target a new uri using the uri override.
 
 ## Deploy a second Cloud Run service
 
-In the first sample, you deployed a Cloud Run service (`hello-a`). Deploy a
-second Cloud Run service which will serve as the target of the HTTP uri override
-later:
+Deploy a second Cloud Run service which will serve as the target of the HTTP uri
+override later:
 
 ```sh
-SERVICE_B=hello-b
+SERVICE2=hello2
 REGION=us-central1
 
-gcloud run deploy $SERVICE_B \
+gcloud run deploy $SERVICE2 \
   --allow-unauthenticated \
   --image=gcr.io/cloudrun/hello \
   --region=$REGION
@@ -29,16 +32,16 @@ gcloud run deploy $SERVICE_B \
 Save the host part of URL of the service for later:
 
 ```sh
-SERVICE_B_URL=$(gcloud run services describe $SERVICE_B --region $REGION --format 'value(status.url)')
-SERVICE_B_HOST=$(echo $SERVICE_B_URL | sed 's,http[s]*://,,g')
+SERVICE2_URL=$(gcloud run services describe $SERVICE2 --region $REGION --format 'value(status.url)')
+SERVICE2_HOST=$(echo $SERVICE2_URL | sed 's,http[s]*://,,g')
 ```
 
 ## Setup for Queue-level Task Routing Configuration
 
 *Queue-level Task Routing Configuration* is currently an experimental feature.
-As such, it doesn't have proper `gcloud` support. Instead, we will use `curl`.
+As such, it doesn't have `gcloud` support. Instead, we will use `curl`.
 
-First, get an access token:
+First, login and get an access token:
 
 ```sh
 gcloud auth application-default login
@@ -55,10 +58,11 @@ TASKS_API="https://cloudtasks.googleapis.com/v2beta3"
 TASKS_QUEUES_API=$TASKS_API/$QUEUES_PATH
 ```
 
-## Create a Cloud Tasks queue
+## Create a Cloud Tasks queue with uri override
 
-Create a queue with HTTP target uri override. Note that, the uri override refers
-to the second Cloud Run service:
+Create a queue with a HTTP target uri override. Note that, the uri override
+refers to the second Cloud Run service. Any HTTP task added to the queue will
+have its uri host overridden by service2's host:
 
 ```sh
 QUEUE=http-queue-uri-override
@@ -69,9 +73,16 @@ curl -X POST $TASKS_QUEUES_API \
   -d @- << EOF
 {
   "name": "$QUEUES_PATH/$QUEUE",
-  "httpTarget": {"uriOverride":{"host":"$SERVICE_B_HOST"}}
+  "httpTarget": {"uriOverride":{"host":"$SERVICE2_HOST"}}
 }
 EOF
+```
+
+You can see the queue configuration:
+
+```sh
+curl -X GET $TASKS_QUEUES_API/$QUEUE \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}"
 ```
 
 Pause the queue temporarily, so we can observe HTTP tasks as they are created:
@@ -83,13 +94,14 @@ gcloud tasks queues pause $QUEUE \
 
 ## Create an HTTP task
 
-Create an HTTP task. Note that we're using the first service's URL still:
+Create an HTTP task. Note that we're using the first service's URL still but
+this will be overridden by the queue later:
 
 ```sh
 gcloud tasks create-http-task \
     --queue=$QUEUE \
     --location=$LOCATION \
-    --url=$SERVICE_A_URL \
+    --url=$SERVICE1_URL \
     --method=GET
 ```
 
@@ -105,7 +117,7 @@ http-queue               RUNNING  1000              500.0            100
 http-queue-uri-override  PAUSED   1000              500.0            100
 ```
 
-## Test the HTTP task
+## Test the HTTP task with uri override
 
 Resume the queue:
 
@@ -118,7 +130,7 @@ You should see that the second (not the first) Cloud Run service received an HTT
 Cloud Tasks due to the override:
 
 ```sh
-gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=$SERVICE_B" --limit 1
+gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=$SERVICE2" --limit 1
 ---
 httpRequest:
   latency: 0.228982142s
@@ -126,7 +138,71 @@ httpRequest:
   remoteIp: 35.187.132.84
   requestMethod: GET
   requestSize: '426'
-  requestUrl: https://hello-b-idcwffc3yq-uc.a.run.app/
+  requestUrl: https://hello2-idcwffc3yq-uc.a.run.app/
+  responseSize: '5510'
+  serverIp: 216.239.34.53
+  status: 200
+  userAgent: Google-Cloud-Tasks
+```
+
+## Change the pending tasks with uri override
+
+You can also use the uri override to change the uri of pending tasks.
+
+Pause the queue again, so we can observe HTTP tasks as they are created:
+
+```sh
+gcloud tasks queues pause $QUEUE \
+    --location=$LOCATION
+```
+
+Create an HTTP task. Note that we're using the `google.com` as the task URL:
+
+```sh
+gcloud tasks create-http-task \
+    --queue=$QUEUE \
+    --location=$LOCATION \
+    --url=https://www.google.com \
+    --method=GET
+```
+
+The task is in pending state as the queue is paused.
+
+Now, update the HTTP uri override to point to the first service. This will override
+the pending task's host from `google.com` to the first service's host:
+
+```sh
+SERVICE1_URL=$(gcloud run services describe $SERVICE1 --region $REGION --format 'value(status.url)')
+SERVICE1_HOST=$(echo $SERVICE1_URL | sed 's,http[s]*://,,g')
+
+curl -X PATCH "$TASKS_QUEUES_API/$QUEUE?updateMask=httpTarget.uriOverride" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d @- << EOF
+{"httpTarget": {"uriOverride":{"host":"$SERVICE1_HOST"}}}
+EOF
+```
+
+Resume the queue:
+
+```sh
+gcloud tasks queues resume $QUEUE \
+    --location=$LOCATION
+```
+
+You should see that the first Cloud Run service received an HTTP GET request from
+Cloud Tasks due to the override (instead of `google.com`):
+
+```sh
+gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=$SERVICE1" --limit 1
+---
+httpRequest:
+  latency: 0.228982142s
+  protocol: HTTP/1.1
+  remoteIp: 35.187.132.84
+  requestMethod: GET
+  requestSize: '426'
+  requestUrl: https://hello1-idcwffc3yq-uc.a.run.app/
   responseSize: '5510'
   serverIp: 216.239.34.53
   status: 200
