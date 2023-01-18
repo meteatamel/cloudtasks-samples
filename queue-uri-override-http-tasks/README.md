@@ -14,6 +14,8 @@ In this sample, you'll see how to:
    Cloud Run service.
 1. Change pending tasks in the queue to target a new uri using the uri override.
 
+![Architecture](architecture.png)
+
 ## What is Queue-level task routing configuration?
 
 Queue-level task routing configuration changes the HTTP task routing for the

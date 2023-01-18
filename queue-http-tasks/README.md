@@ -3,6 +3,8 @@
 In this sample, you'll see how to create a Cloud Tasks queue and add HTTP tasks
 to it to target a Cloud Run service.
 
+![Architecture](architecture.png)
+
 ## Enable APIs
 
 First, make sure the required APIs are enabled:

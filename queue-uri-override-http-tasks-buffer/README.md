@@ -8,7 +8,9 @@ In the previous [Create a queue with HTTP uri
 override](../queue-uri-override-http-tasks/) sample, we created a queue with
 some default HTTP uri overrides. In this sample, you'll see how to take
 advantage of the queue-level HTTP uri overrides and the BufferTask API to create
-HTTP target tasks more easily.
+HTTP target tasks more easily by simply sending an HTTP request.
+
+![Architecture](architecture.png)
 
 ## What is BufferTask API?
 

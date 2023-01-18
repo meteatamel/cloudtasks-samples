@@ -13,7 +13,7 @@ Pub/Sub and Cloud Run using the new *Queue-level task routing configuration* and
 Imagine you have an application/user publishing messages to a Pub/Sub topic
 managed by Eventarc and Eventarc routing those messages to a Cloud Run service:
 
-TODO: Add a diagram.
+![Architecture](architecture-before.png)
 
 Now, assume that the user is generating too many messages that are overwhelming
 the Cloud Run service. In this case, you can integrate a Cloud Tasks queue as a
@@ -22,6 +22,8 @@ buffer to throttle the load. For this to work, you need to:
 1. Create a Cloud Tasks queue with an uri override to point to the Cloud Run
    service.
 1. Change the Pub/Sub subscription endpoint to the BufferTask API.
+
+![Architecture](architecture-after.png)
 
 Let's see what it takes to set this up.
 
