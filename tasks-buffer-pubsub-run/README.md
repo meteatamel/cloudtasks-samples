@@ -1,8 +1,7 @@
 # Cloud Tasks as a buffer between Pub/Sub and Cloud Run
 
 > **Note:** *Queue-level task routing configuration* and *BufferTaskAPI* are
-> experimental features in *preview*. Only allow-listed projects can currently
-> take advantage of it.
+> features in *public preview*.
 
 In this sample, you'll see how to use a Cloud Tasks queue as a buffer between
 Pub/Sub and Cloud Run using the new *Queue-level task routing configuration* and
@@ -109,28 +108,6 @@ Received event of type google.cloud.pubsub.topic.v1.messagePublished. Event data
 
 Next, let's see how to buffer these messages using a Cloud Tasks queue.
 
-## Setup for new Cloud Tasks features
-
-*Queue-level Task Routing Configuration* is currently an experimental feature.
-As such, it doesn't have `gcloud` support. Instead, we will use `curl`.
-
-First, login and get an access token:
-
-```sh
-gcloud auth application-default login
-ACCESS_TOKEN=$(gcloud auth application-default print-access-token)
-```
-
-Set some environment variables that we'll use later:
-
-```sh
-PROJECT_ID=$(gcloud config get-value project)
-LOCATION=us-central1
-QUEUES_PATH=projects/$PROJECT_ID/locations/$LOCATION/queues
-TASKS_API="https://cloudtasks.googleapis.com/v2beta3"
-TASKS_QUEUES_API=$TASKS_API/$QUEUES_PATH
-```
-
 ## Create a Cloud Tasks queue with uri override
 
 Create a queue with a HTTP target uri override pointing to the Cloud Run
@@ -140,20 +117,11 @@ service. Also apply some rate limits to the queue. In this case, we're applying
 ```sh
 QUEUE=pubsub-http-queue
 
-curl -X POST $TASKS_QUEUES_API \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d @- << EOF
-{
-  "name": "$QUEUES_PATH/$QUEUE",
-  "httpTarget": {"uriOverride":{"host":"$SERVICE_HOST"}},
-  "rateLimits":{
-    "maxDispatchesPerSecond":1,
-    "maxBurstSize":1,
-    "maxConcurrentDispatches":1
-  }
-}
-EOF
+gcloud beta tasks queues create $QUEUE \
+  --http-uri-override=host:$SERVICE_HOST \
+  --max-concurrent-tasks=1 \
+  --max-tasks-dispatched-per-second=1 \
+  --location=$LOCATION
 ```
 
 ## Configure Pub/Sub topic subscription with BufferTask API
