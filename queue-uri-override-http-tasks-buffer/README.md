@@ -1,8 +1,7 @@
 # Create HTTP target tasks more easily with the BufferTask API
 
 > **Note:** *Queue-level task routing configuration* and *BufferTaskAPI* are
-> experimental features in *preview*. Only allow-listed projects can currently
-> take advantage of it.
+> features in *public preview*.
 
 In the previous [Create a queue with HTTP uri
 override](../queue-uri-override-http-tasks/) sample, we created a queue with
@@ -31,28 +30,6 @@ To use the BufferTask API, the queue needs to have the Target URI configuration
 set, or in other words, the previous feature: Queue-level routing configuration
 is a prerequisite for using the BufferTask API.
 
-## Setup
-
-*Queue-level Task Routing Configuration* is currently an experimental feature.
-As such, it doesn't have `gcloud` support. Instead, we will use `curl`.
-
-First, login and get an access token:
-
-```sh
-gcloud auth application-default login
-ACCESS_TOKEN=$(gcloud auth application-default print-access-token)
-```
-
-Set some environment variables that we'll use later:
-
-```sh
-PROJECT_ID=$(gcloud config get-value project)
-LOCATION=us-central1
-QUEUES_PATH=projects/$PROJECT_ID/locations/$LOCATION/queues
-TASKS_API="https://cloudtasks.googleapis.com/v2beta3"
-TASKS_QUEUES_API=$TASKS_API/$QUEUES_PATH
-```
-
 ## Create a Cloud Tasks queue with uri override
 
 Create a queue with a HTTP target uri override pointing to the first service we
@@ -63,36 +40,49 @@ SERVICE1=hello1
 SERVICE1_URL=$(gcloud run services describe $SERVICE1 --region $REGION --format 'value(status.url)')
 SERVICE1_HOST=$(echo $SERVICE1_URL | sed 's,http[s]*://,,g')
 QUEUE=http-queue-uri-override-buffer
+LOCATION=us-central1
 
-curl -X POST $TASKS_QUEUES_API \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d @- << EOF
-{
-  "name": "$QUEUES_PATH/$QUEUE",
-  "httpTarget": {"uriOverride":{"host":"$SERVICE1_HOST"}}
-}
-EOF
+gcloud beta tasks queues create $QUEUE \
+  --http-uri-override=host:$SERVICE1_HOST \
+  --location=$LOCATION
 ```
 
-You can see the queue configuration:
+You can describe the queue:
 
 ```sh
-curl -X GET $TASKS_QUEUES_API/$QUEUE \
-  -H "Authorization: Bearer ${ACCESS_TOKEN}"
+gcloud beta tasks queues describe $QUEUE --location=$LOCATION
+```
+
+And you should see the uri override:
+
+```sh
+httpTarget:
+  uriOverride:
+    host: hello1-idcwffc3yq-uc.a.run.app
+    pathOverride: {}
+    queryOverride: {}
+...
 ```
 
 Pause the queue temporarily, so we can observe HTTP tasks as they are created:
 
 ```sh
-gcloud tasks queues pause $QUEUE \
-    --location=$LOCATION
+gcloud tasks queues pause $QUEUE --location=$LOCATION
 ```
 
 ## Create an HTTP task with BufferTask API
 
+First, login to get an access token and set some variables:
+
+```sh
+gcloud auth application-default login
+ACCESS_TOKEN=$(gcloud auth application-default print-access-token)
+PROJECT_ID=$(gcloud config get-value project)
+TASKS_QUEUES_API="https://cloudtasks.googleapis.com/v2beta3/projects/$PROJECT_ID/locations/$LOCATION/queues"
+```
+
 Create an HTTP task with BufferTask API. Notice how it's a simple a HTTP GET
-request without the need for creating a Task:
+request to the BufferTask API without the need for creating a Task:
 
 ```sh
 curl -X GET "$TASKS_QUEUES_API/$QUEUE/tasks:buffer" \
@@ -138,8 +128,7 @@ the URL from the queue uri override.
 Resume the queue:
 
 ```sh
-gcloud tasks queues resume $QUEUE \
-    --location=$LOCATION
+gcloud tasks queues resume $QUEUE --location=$LOCATION
 ```
 
 You should see that the Cloud Run service received an HTTP GET and POST requests from
