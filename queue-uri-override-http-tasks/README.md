@@ -1,7 +1,7 @@
 # Create a queue with HTTP uri override
 
-> **Note:** *Queue-level task routing configuration* is an experimental feature
-> in *preview*. Only allow-listed projects can currently take advantage of it.
+> **Note:** *Queue-level task routing configuration* is a feature in *public
+> preview*.
 
 This sample builds on the previous [Create a regular queue for HTTP target
 tasks](../queue-http-tasks/) sample. Make sure you go through that sample before
@@ -58,28 +58,6 @@ SERVICE2_URL=$(gcloud run services describe $SERVICE2 --region $REGION --format 
 SERVICE2_HOST=$(echo $SERVICE2_URL | sed 's,http[s]*://,,g')
 ```
 
-## Setup
-
-*Queue-level Task Routing Configuration* is currently an experimental feature.
-As such, it doesn't have `gcloud` support. Instead, we will use `curl`.
-
-First, login and get an access token:
-
-```sh
-gcloud auth application-default login
-ACCESS_TOKEN=$(gcloud auth application-default print-access-token)
-```
-
-Set some environment variables that we'll use later:
-
-```sh
-PROJECT_ID=$(gcloud config get-value project)
-LOCATION=us-central1
-QUEUES_PATH=projects/$PROJECT_ID/locations/$LOCATION/queues
-TASKS_API="https://cloudtasks.googleapis.com/v2beta3"
-TASKS_QUEUES_API=$TASKS_API/$QUEUES_PATH
-```
-
 ## Create a Cloud Tasks queue with uri override
 
 Create a queue with a HTTP target uri override. Note that, the uri override
@@ -87,31 +65,32 @@ refers to the second Cloud Run service. Any HTTP task added to the queue will
 have its uri host overridden by service2's host:
 
 ```sh
-QUEUE=http-queue-uri-override
-
-curl -X POST $TASKS_QUEUES_API \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d @- << EOF
-{
-  "name": "$QUEUES_PATH/$QUEUE",
-  "httpTarget": {"uriOverride":{"host":"$SERVICE2_HOST"}}
-}
-EOF
+gcloud beta tasks queues create $QUEUE \
+  --http-uri-override=host:$SERVICE2_HOST \
+  --location=$LOCATION
 ```
 
-You can see the queue configuration:
+You can describe the queue:
 
 ```sh
-curl -X GET $TASKS_QUEUES_API/$QUEUE \
-  -H "Authorization: Bearer ${ACCESS_TOKEN}"
+gcloud beta tasks queues describe $QUEUE --location=$LOCATION
+```
+
+And you should see the uri override:
+
+```sh
+httpTarget:
+  uriOverride:
+    host: hello2-idcwffc3yq-uc.a.run.app
+    pathOverride: {}
+    queryOverride: {}
+...
 ```
 
 Pause the queue temporarily, so we can observe HTTP tasks as they are created:
 
 ```sh
-gcloud tasks queues pause $QUEUE \
-    --location=$LOCATION
+gcloud tasks queues pause $QUEUE --location=$LOCATION
 ```
 
 ## Create an HTTP task
@@ -131,8 +110,7 @@ At this point, the task is created but it's in pending state as the queue is
 paused:
 
 ```sh
-gcloud tasks queues list \
-  --location=$LOCATION
+gcloud tasks queues list --location=$LOCATION
 
 QUEUE_NAME               STATE    MAX_NUM_OF_TASKS  MAX_RATE (/sec)  MAX_ATTEMPTS
 http-queue               RUNNING  1000              500.0            100
@@ -144,8 +122,7 @@ http-queue-uri-override  PAUSED   1000              500.0            100
 Resume the queue:
 
 ```sh
-gcloud tasks queues resume $QUEUE \
-    --location=$LOCATION
+gcloud tasks queues resume $QUEUE --location=$LOCATION
 ```
 
 You should see that the second (not the first) Cloud Run service received an HTTP GET request from
@@ -174,8 +151,7 @@ You can also use the uri override to change the uri of pending tasks.
 Pause the queue again, so we can observe HTTP tasks as they are created:
 
 ```sh
-gcloud tasks queues pause $QUEUE \
-    --location=$LOCATION
+gcloud tasks queues pause $QUEUE --location=$LOCATION
 ```
 
 Create an HTTP task. Note that we're using the `google.com` as the task URL:
@@ -197,19 +173,15 @@ the pending task's host from `google.com` to the first service's host:
 SERVICE1_URL=$(gcloud run services describe $SERVICE1 --region $REGION --format 'value(status.url)')
 SERVICE1_HOST=$(echo $SERVICE1_URL | sed 's,http[s]*://,,g')
 
-curl -X PATCH "$TASKS_QUEUES_API/$QUEUE?updateMask=httpTarget.uriOverride" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d @- << EOF
-{"httpTarget": {"uriOverride":{"host":"$SERVICE1_HOST"}}}
-EOF
+gcloud beta tasks queues update ${QUEUE} \
+  --http-uri-override=host:$SERVICE1_HOST \
+  --location=$LOCATION
 ```
 
 Resume the queue:
 
 ```sh
-gcloud tasks queues resume $QUEUE \
-    --location=$LOCATION
+gcloud tasks queues resume $QUEUE --location=$LOCATION
 ```
 
 You should see that the first Cloud Run service received an HTTP GET request from
