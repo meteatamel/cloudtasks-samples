@@ -65,6 +65,9 @@ refers to the second Cloud Run service. Any HTTP task added to the queue will
 have its uri host overridden by service2's host:
 
 ```sh
+QUEUE=http-queue-uri-override
+LOCATION=us-central1
+
 gcloud beta tasks queues create $QUEUE \
   --http-uri-override=host:$SERVICE2_HOST \
   --location=$LOCATION
